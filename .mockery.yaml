@@ -1,0 +1,47 @@
+with-expecter: true
+mockname: "Mock{{.InterfaceName}}"
+filename: "{{.InterfaceName}}.go"
+packages:
+  github.com/mathefer/tc-fiap-product/internal/product/domain/repositories:
+    config:
+      dir: "mocks/product/domain/repositories"
+      outpkg: mocks
+    interfaces:
+      ProductRepository:
+  github.com/mathefer/tc-fiap-product/internal/product/presenter:
+    config:
+      dir: "mocks/product/presenter"
+      outpkg: mocks
+    interfaces:
+      ProductPresenter:
+  github.com/mathefer/tc-fiap-product/internal/product/usecase/addProduct:
+    config:
+      dir: "mocks/product/usecase/addProduct"
+      outpkg: mocks
+    interfaces:
+      AddProductUseCase:
+  github.com/mathefer/tc-fiap-product/internal/product/usecase/getProduct:
+    config:
+      dir: "mocks/product/usecase/getProduct"
+      outpkg: mocks
+    interfaces:
+      GetProductUseCase:
+  github.com/mathefer/tc-fiap-product/internal/product/usecase/updateProduct:
+    config:
+      dir: "mocks/product/usecase/updateProduct"
+      outpkg: mocks
+    interfaces:
+      UpdateProductUseCase:
+  github.com/mathefer/tc-fiap-product/internal/product/usecase/deleteProduct:
+    config:
+      dir: "mocks/product/usecase/deleteProduct"
+      outpkg: mocks
+    interfaces:
+      DeleteProductUseCase:
+  github.com/mathefer/tc-fiap-product/internal/product/controller:
+    config:
+      dir: "mocks/product/controller"
+      outpkg: mocks
+    interfaces:
+      ProductController:
+
