@@ -3,6 +3,7 @@ package features
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -239,5 +240,335 @@ func setupTestEnvironment(t *testing.T) (*gorm.DB, *chi.Mux) {
 // cleanupTestDatabase cleans up test data
 func cleanupTestDatabase(db *gorm.DB) {
 	db.Exec("DELETE FROM product")
+}
+
+func TestUpdateProductBDD(t *testing.T) {
+	Convey("Feature: Update Product", t, func() {
+		db, router := setupTestEnvironment(t)
+		defer cleanupTestDatabase(db)
+
+		Convey("Scenario 1: Successfully update an existing product", func() {
+			// First, create a product
+			createRequest := &dto.AddProductRequestDto{
+				Name:        "Original Hamburguer",
+				Category:    1,
+				Price:       29.99,
+				Description: "Original description",
+				ImageLink:   "https://example.com/original.jpg",
+			}
+
+			Convey("Given an existing product in the database", func() {
+				body, _ := json.Marshal(createRequest)
+				req := httptest.NewRequest(http.MethodPost, "/v1/product", bytes.NewBuffer(body))
+				req.Header.Set("Content-Type", "application/json")
+				w := httptest.NewRecorder()
+				router.ServeHTTP(w, req)
+				So(w.Code, ShouldEqual, http.StatusCreated)
+
+				// Get the created product ID
+				getReq := httptest.NewRequest(http.MethodGet, "/v1/product?category=1", nil)
+				getW := httptest.NewRecorder()
+				router.ServeHTTP(getW, getReq)
+
+				var products []*dto.GetProductResponseDto
+				json.NewDecoder(getW.Body).Decode(&products)
+				So(products, ShouldNotBeEmpty)
+
+				var productID uint
+				for _, p := range products {
+					if p.Name == createRequest.Name {
+						productID = p.ID
+						break
+					}
+				}
+				So(productID, ShouldNotEqual, 0)
+
+				Convey("When PUT request is made with updated data", func() {
+					updateRequest := &dto.UpdateProductRequestDto{
+						Name:        "Updated Hamburguer",
+						Category:    1,
+						Price:       39.99,
+						Description: "Updated description",
+						ImageLink:   "https://example.com/updated.jpg",
+					}
+
+					updateBody, _ := json.Marshal(updateRequest)
+					updateReq := httptest.NewRequest(http.MethodPut, "/v1/product/"+itoa(productID), bytes.NewBuffer(updateBody))
+					updateReq.Header.Set("Content-Type", "application/json")
+					updateW := httptest.NewRecorder()
+
+					router.ServeHTTP(updateW, updateReq)
+
+					Convey("Then the product should be updated with status 200", func() {
+						So(updateW.Code, ShouldEqual, http.StatusOK)
+					})
+
+					Convey("And the updated product can be retrieved with new values", func() {
+						verifyReq := httptest.NewRequest(http.MethodGet, "/v1/product?category=1", nil)
+						verifyW := httptest.NewRecorder()
+						router.ServeHTTP(verifyW, verifyReq)
+
+						var verifyProducts []*dto.GetProductResponseDto
+						json.NewDecoder(verifyW.Body).Decode(&verifyProducts)
+
+						found := false
+						for _, p := range verifyProducts {
+							if p.ID == productID {
+								found = true
+								So(p.Name, ShouldEqual, updateRequest.Name)
+								So(p.Price, ShouldEqual, updateRequest.Price)
+								So(p.Description, ShouldEqual, updateRequest.Description)
+								So(p.ImageLink, ShouldEqual, updateRequest.ImageLink)
+								break
+							}
+						}
+						So(found, ShouldBeTrue)
+					})
+				})
+			})
+		})
+
+		Convey("Scenario 2: Update product with invalid ID", func() {
+			Convey("Given an invalid product ID", func() {
+				updateRequest := &dto.UpdateProductRequestDto{
+					Name:        "Updated Hamburguer",
+					Category:    1,
+					Price:       39.99,
+					Description: "Updated description",
+					ImageLink:   "https://example.com/updated.jpg",
+				}
+
+				Convey("When PUT request is made with non-existent ID", func() {
+					updateBody, _ := json.Marshal(updateRequest)
+					updateReq := httptest.NewRequest(http.MethodPut, "/v1/product/99999", bytes.NewBuffer(updateBody))
+					updateReq.Header.Set("Content-Type", "application/json")
+					updateW := httptest.NewRecorder()
+
+					router.ServeHTTP(updateW, updateReq)
+
+					Convey("Then the request should fail with status 500", func() {
+						So(updateW.Code, ShouldEqual, http.StatusInternalServerError)
+					})
+				})
+			})
+
+			Convey("Given an invalid ID format", func() {
+				Convey("When PUT request is made with non-numeric ID", func() {
+					updateBody := []byte(`{"name":"Test"}`)
+					updateReq := httptest.NewRequest(http.MethodPut, "/v1/product/invalid", bytes.NewBuffer(updateBody))
+					updateReq.Header.Set("Content-Type", "application/json")
+					updateW := httptest.NewRecorder()
+
+					router.ServeHTTP(updateW, updateReq)
+
+					Convey("Then the request should fail with status 400", func() {
+						So(updateW.Code, ShouldEqual, http.StatusBadRequest)
+					})
+				})
+			})
+		})
+
+		Convey("Scenario 3: Update product with invalid JSON", func() {
+			Convey("Given an existing product", func() {
+				createRequest := &dto.AddProductRequestDto{
+					Name:        "Product for Invalid JSON Test",
+					Category:    1,
+					Price:       19.99,
+					Description: "Test",
+					ImageLink:   "https://example.com/test.jpg",
+				}
+				body, _ := json.Marshal(createRequest)
+				req := httptest.NewRequest(http.MethodPost, "/v1/product", bytes.NewBuffer(body))
+				req.Header.Set("Content-Type", "application/json")
+				w := httptest.NewRecorder()
+				router.ServeHTTP(w, req)
+				So(w.Code, ShouldEqual, http.StatusCreated)
+
+				Convey("When PUT request is made with invalid JSON", func() {
+					invalidJSON := []byte(`{"name": "Test", "invalid}`)
+					updateReq := httptest.NewRequest(http.MethodPut, "/v1/product/1", bytes.NewBuffer(invalidJSON))
+					updateReq.Header.Set("Content-Type", "application/json")
+					updateW := httptest.NewRecorder()
+
+					router.ServeHTTP(updateW, updateReq)
+
+					Convey("Then the request should fail with status 400", func() {
+						So(updateW.Code, ShouldEqual, http.StatusBadRequest)
+						So(updateW.Body.String(), ShouldContainSubstring, "Invalid request payload")
+					})
+				})
+			})
+		})
+	})
+}
+
+func TestDeleteProductBDD(t *testing.T) {
+	Convey("Feature: Delete Product", t, func() {
+		db, router := setupTestEnvironment(t)
+		defer cleanupTestDatabase(db)
+
+		Convey("Scenario 1: Successfully delete an existing product", func() {
+			createRequest := &dto.AddProductRequestDto{
+				Name:        "Product to Delete",
+				Category:    1,
+				Price:       29.99,
+				Description: "This product will be deleted",
+				ImageLink:   "https://example.com/delete.jpg",
+			}
+
+			Convey("Given an existing product in the database", func() {
+				body, _ := json.Marshal(createRequest)
+				req := httptest.NewRequest(http.MethodPost, "/v1/product", bytes.NewBuffer(body))
+				req.Header.Set("Content-Type", "application/json")
+				w := httptest.NewRecorder()
+				router.ServeHTTP(w, req)
+				So(w.Code, ShouldEqual, http.StatusCreated)
+
+				// Get the created product ID
+				getReq := httptest.NewRequest(http.MethodGet, "/v1/product?category=1", nil)
+				getW := httptest.NewRecorder()
+				router.ServeHTTP(getW, getReq)
+
+				var products []*dto.GetProductResponseDto
+				json.NewDecoder(getW.Body).Decode(&products)
+				So(products, ShouldNotBeEmpty)
+
+				var productID uint
+				for _, p := range products {
+					if p.Name == createRequest.Name {
+						productID = p.ID
+						break
+					}
+				}
+				So(productID, ShouldNotEqual, 0)
+
+				Convey("When DELETE request is made", func() {
+					deleteReq := httptest.NewRequest(http.MethodDelete, "/v1/product/"+itoa(productID), nil)
+					deleteW := httptest.NewRecorder()
+
+					router.ServeHTTP(deleteW, deleteReq)
+
+					Convey("Then the product should be deleted with status 204", func() {
+						So(deleteW.Code, ShouldEqual, http.StatusNoContent)
+					})
+
+					Convey("And the product should no longer exist", func() {
+						verifyReq := httptest.NewRequest(http.MethodGet, "/v1/product?category=1", nil)
+						verifyW := httptest.NewRecorder()
+						router.ServeHTTP(verifyW, verifyReq)
+
+						var verifyProducts []*dto.GetProductResponseDto
+						json.NewDecoder(verifyW.Body).Decode(&verifyProducts)
+
+						found := false
+						for _, p := range verifyProducts {
+							if p.ID == productID {
+								found = true
+								break
+							}
+						}
+						So(found, ShouldBeFalse)
+					})
+				})
+			})
+		})
+
+		Convey("Scenario 2: Delete product with invalid ID", func() {
+			Convey("Given a non-existent product ID", func() {
+				Convey("When DELETE request is made", func() {
+					deleteReq := httptest.NewRequest(http.MethodDelete, "/v1/product/99999", nil)
+					deleteW := httptest.NewRecorder()
+
+					router.ServeHTTP(deleteW, deleteReq)
+
+					Convey("Then the request should succeed with status 204 (idempotent delete)", func() {
+						// GORM's Delete doesn't return error for non-existent records
+						// This is idempotent behavior - deleting something that doesn't exist is OK
+						So(deleteW.Code, ShouldEqual, http.StatusNoContent)
+					})
+				})
+			})
+
+			Convey("Given an invalid ID format", func() {
+				Convey("When DELETE request is made with non-numeric ID", func() {
+					deleteReq := httptest.NewRequest(http.MethodDelete, "/v1/product/invalid", nil)
+					deleteW := httptest.NewRecorder()
+
+					router.ServeHTTP(deleteW, deleteReq)
+
+					Convey("Then the request should fail with status 400", func() {
+						So(deleteW.Code, ShouldEqual, http.StatusBadRequest)
+					})
+				})
+			})
+		})
+
+		Convey("Scenario 3: Delete multiple products", func() {
+			Convey("Given multiple products in the database", func() {
+				products := []*dto.AddProductRequestDto{
+					{Name: "Product 1", Category: 1, Price: 10.99, Description: "First", ImageLink: "https://example.com/1.jpg"},
+					{Name: "Product 2", Category: 1, Price: 20.99, Description: "Second", ImageLink: "https://example.com/2.jpg"},
+					{Name: "Product 3", Category: 1, Price: 30.99, Description: "Third", ImageLink: "https://example.com/3.jpg"},
+				}
+
+				var productIDs []uint
+				for _, p := range products {
+					body, _ := json.Marshal(p)
+					req := httptest.NewRequest(http.MethodPost, "/v1/product", bytes.NewBuffer(body))
+					req.Header.Set("Content-Type", "application/json")
+					w := httptest.NewRecorder()
+					router.ServeHTTP(w, req)
+					So(w.Code, ShouldEqual, http.StatusCreated)
+				}
+
+				// Get all product IDs
+				getReq := httptest.NewRequest(http.MethodGet, "/v1/product?category=1", nil)
+				getW := httptest.NewRecorder()
+				router.ServeHTTP(getW, getReq)
+
+				var fetchedProducts []*dto.GetProductResponseDto
+				json.NewDecoder(getW.Body).Decode(&fetchedProducts)
+				for _, p := range fetchedProducts {
+					productIDs = append(productIDs, p.ID)
+				}
+				So(len(productIDs), ShouldBeGreaterThanOrEqualTo, 3)
+
+				Convey("When deleting the first product", func() {
+					deleteReq := httptest.NewRequest(http.MethodDelete, "/v1/product/"+itoa(productIDs[0]), nil)
+					deleteW := httptest.NewRecorder()
+					router.ServeHTTP(deleteW, deleteReq)
+
+					Convey("Then only the first product should be deleted", func() {
+						So(deleteW.Code, ShouldEqual, http.StatusNoContent)
+
+						verifyReq := httptest.NewRequest(http.MethodGet, "/v1/product?category=1", nil)
+						verifyW := httptest.NewRecorder()
+						router.ServeHTTP(verifyW, verifyReq)
+
+						var remaining []*dto.GetProductResponseDto
+						json.NewDecoder(verifyW.Body).Decode(&remaining)
+
+						// First product should not exist
+						firstFound := false
+						for _, p := range remaining {
+							if p.ID == productIDs[0] {
+								firstFound = true
+								break
+							}
+						}
+						So(firstFound, ShouldBeFalse)
+
+						// Other products should still exist
+						So(len(remaining), ShouldBeGreaterThanOrEqualTo, 2)
+					})
+				})
+			})
+		})
+	})
+}
+
+// itoa converts uint to string (helper function)
+func itoa(n uint) string {
+	return fmt.Sprintf("%d", n)
 }
 

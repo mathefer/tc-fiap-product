@@ -42,6 +42,7 @@ func (h *productApiController) Get(w http.ResponseWriter, r *http.Request) {
 
 	if category == "" {
 		http.Error(w, "Invalid parameter", http.StatusBadRequest)
+		return
 	}
 
 	categoryInt, err := strconv.ParseUint(category, 10, 64)
@@ -54,6 +55,7 @@ func (h *productApiController) Get(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		http.Error(w, "Error processing request", http.StatusInternalServerError)
+		return
 	}
 
 	w.WriteHeader(http.StatusOK)
@@ -74,12 +76,14 @@ func (h *productApiController) Add(w http.ResponseWriter, r *http.Request) {
 
 	if err := json.NewDecoder(r.Body).Decode(&productRequest); err != nil {
 		http.Error(w, "Invalid request payload", http.StatusBadRequest)
+		return
 	}
 
 	err := h.controller.Add(&productRequest)
 
 	if err != nil {
 		http.Error(w, "Error processing request", http.StatusInternalServerError)
+		return
 	}
 
 	w.WriteHeader(http.StatusCreated)
@@ -99,18 +103,21 @@ func (h *productApiController) Update(w http.ResponseWriter, r *http.Request) {
 	id, err := getIDFromPath(r)
 	if err != nil {
 		http.Error(w, "Invalid parameter", http.StatusBadRequest)
+		return
 	}
 
 	var productRequest dto.UpdateProductRequestDto
 
 	if err := json.NewDecoder(r.Body).Decode(&productRequest); err != nil {
 		http.Error(w, "Invalid request payload", http.StatusBadRequest)
+		return
 	}
 
 	err = h.controller.Update(id, &productRequest)
 
 	if err != nil {
 		http.Error(w, "Error processing request", http.StatusInternalServerError)
+		return
 	}
 
 	w.WriteHeader(http.StatusOK)
@@ -128,12 +135,14 @@ func (h *productApiController) Delete(w http.ResponseWriter, r *http.Request) {
 	id, err := getIDFromPath(r)
 	if err != nil {
 		http.Error(w, "Invalid parameter", http.StatusBadRequest)
+		return
 	}
 
 	err = h.controller.Delete(id)
 
 	if err != nil {
 		http.Error(w, "Error processing request", http.StatusInternalServerError)
+		return
 	}
 
 	w.WriteHeader(http.StatusNoContent)

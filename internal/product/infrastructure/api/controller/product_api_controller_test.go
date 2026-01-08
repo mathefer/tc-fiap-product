@@ -173,20 +173,12 @@ func (suite *ProductApiControllerTestSuite) TestAdd_InvalidJSON() {
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 
-	// When JSON decode fails, http.Error writes 400, but the controller still gets called
-	// because the code doesn't return early after http.Error
-	emptyDto := &dto.AddProductRequestDto{}
-	suite.mockController.EXPECT().
-		Add(emptyDto).
-		Return(errors.New("validation error")).
-		Once()
+	// Controller should NOT be called when JSON decode fails - early return after http.Error
 
 	// Act
 	suite.router.ServeHTTP(w, req)
 
 	// Assert
-	// http.Error writes 400 first, and the response is committed
-	// Even though controller is called afterwards, the status code remains 400
 	assert.Equal(suite.T(), http.StatusBadRequest, w.Code)
 	assert.Contains(suite.T(), w.Body.String(), "Invalid request payload")
 }
@@ -197,20 +189,12 @@ func (suite *ProductApiControllerTestSuite) TestAdd_EmptyBody() {
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 
-	// When body is empty, JSON decode fails, http.Error writes 400, but the controller still gets called
-	// because the code doesn't return early after http.Error
-	emptyDto := &dto.AddProductRequestDto{}
-	suite.mockController.EXPECT().
-		Add(emptyDto).
-		Return(errors.New("validation error")).
-		Once()
+	// Controller should NOT be called when JSON decode fails - early return after http.Error
 
 	// Act
 	suite.router.ServeHTTP(w, req)
 
 	// Assert
-	// http.Error writes 400 first, and the response is committed
-	// Even though controller is called afterwards, the status code remains 400
 	assert.Equal(suite.T(), http.StatusBadRequest, w.Code)
 	assert.Contains(suite.T(), w.Body.String(), "Invalid request payload")
 }
@@ -274,32 +258,16 @@ func (suite *ProductApiControllerTestSuite) TestUpdate_Success() {
 func (suite *ProductApiControllerTestSuite) TestUpdate_InvalidID() {
 	// Arrange
 	id := "invalid"
-	requestDto := &dto.UpdateProductRequestDto{
-		Name:        "Hamburguer",
-		Category:    1,
-		Price:       34.99,
-		Description: "Hamburguer com salada",
-		ImageLink:   "https://example.com/image.jpg",
-	}
-
-	// When ID parsing fails, getIDFromPath returns 0, but the controller still gets called
-	// because the code doesn't return early after http.Error
-	suite.mockController.EXPECT().
-		Update(uint(0), requestDto).
-		Return(errors.New("invalid id")).
-		Once()
-
-	body, _ := json.Marshal(requestDto)
-	req := httptest.NewRequest(http.MethodPut, "/v1/product/"+id, bytes.NewBuffer(body))
+	req := httptest.NewRequest(http.MethodPut, "/v1/product/"+id, bytes.NewBuffer([]byte(`{}`)))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
+
+	// Controller should NOT be called when ID parsing fails - early return after http.Error
 
 	// Act
 	suite.router.ServeHTTP(w, req)
 
 	// Assert
-	// http.Error writes 400 first, and the response is committed
-	// Even though controller is called afterwards, the status code remains 400
 	assert.Equal(suite.T(), http.StatusBadRequest, w.Code)
 	assert.Contains(suite.T(), w.Body.String(), "Invalid parameter")
 }
@@ -312,20 +280,12 @@ func (suite *ProductApiControllerTestSuite) TestUpdate_InvalidJSON() {
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 
-	// When JSON decode fails, http.Error writes 400, but the controller still gets called
-	// because the code doesn't return early after http.Error
-	emptyDto := &dto.UpdateProductRequestDto{}
-	suite.mockController.EXPECT().
-		Update(uint(1), emptyDto).
-		Return(errors.New("validation error")).
-		Once()
+	// Controller should NOT be called when JSON decode fails - early return after http.Error
 
 	// Act
 	suite.router.ServeHTTP(w, req)
 
 	// Assert
-	// http.Error writes 400 first, and the response is committed
-	// Even though controller is called afterwards, the status code remains 400
 	assert.Equal(suite.T(), http.StatusBadRequest, w.Code)
 	assert.Contains(suite.T(), w.Body.String(), "Invalid request payload")
 }
@@ -384,19 +344,12 @@ func (suite *ProductApiControllerTestSuite) TestDelete_InvalidID() {
 	req := httptest.NewRequest(http.MethodDelete, "/v1/product/"+id, nil)
 	w := httptest.NewRecorder()
 
-	// When ID parsing fails, getIDFromPath returns 0, but the controller still gets called
-	// because the code doesn't return early after http.Error
-	suite.mockController.EXPECT().
-		Delete(uint(0)).
-		Return(errors.New("invalid id")).
-		Once()
+	// Controller should NOT be called when ID parsing fails - early return after http.Error
 
 	// Act
 	suite.router.ServeHTTP(w, req)
 
 	// Assert
-	// http.Error writes 400 first, and the response is committed
-	// Even though controller is called afterwards, the status code remains 400
 	assert.Equal(suite.T(), http.StatusBadRequest, w.Code)
 	assert.Contains(suite.T(), w.Body.String(), "Invalid parameter")
 }
