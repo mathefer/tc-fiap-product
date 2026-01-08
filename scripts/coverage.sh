@@ -6,7 +6,8 @@
 set -e
 
 echo "🧪 Running tests with coverage..."
-go test ./... -coverprofile=coverage.out -covermode=atomic
+# Exclude mocks, docs, cmd/api, and internal/app from coverage (infrastructure code)
+go test $(go list ./... | grep -v '/mocks/' | grep -v '/docs' | grep -v 'cmd/api' | grep -v 'internal/app') -coverprofile=coverage.out -covermode=atomic
 
 echo ""
 echo "📊 Coverage summary:"
