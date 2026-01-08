@@ -23,6 +23,7 @@ go.work
 *.swp
 *.swo
 *~
+.serena/
 
 # Environment files
 .env
@@ -37,3 +38,4 @@ docs/docs.go
 docs/swagger.json
 docs/swagger.yaml
 
+.DS_Store
