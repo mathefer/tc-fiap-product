@@ -26,7 +26,7 @@ env:
   GO_VERSION: '1.24.3'
   KUBECTL_VERSION: 'v1.33.0'
   AWS_REGION: us-east-1
-  EKS_CLUSTER_NAME: tc-fiap
+  EKS_CLUSTER_NAME: tc-fiap-production
   ECR_REGISTRY: ${{ vars.ECR_REGISTRY }}
   ECR_REPOSITORY: tc-fiap-product
 
@@ -167,12 +167,12 @@ jobs:
         # Deploy with new image
         IMAGE_TAG=$(echo "${{ needs.docker.outputs.image_tag }}" | tr ',' '\n' | head -n1 | xargs)
         echo "Using image: $IMAGE_TAG"
-        sed "s|${{ vars.ECR_REGISTRY }}/tc-fiap-product:latest|$IMAGE_TAG|g" k8s/app-deployment.yaml > /tmp/app-final.yaml
+        sed "s|939458930010.dkr.ecr.us-east-1.amazonaws.com/tc-fiap-product:latest|$IMAGE_TAG|g" k8s/app-deployment.yaml > /tmp/app-final.yaml
         
         kubectl apply -f /tmp/app-final.yaml
         kubectl apply -f k8s/app-service.yaml
         kubectl apply -f k8s/app-hpa.yaml
         
         echo "Deployment completed. Checking status..."
-        kubectl get deployment app-deployment -o wide
-        kubectl rollout status deployment/app-deployment --timeout=300s
+        kubectl get deployment product-service -o wide
+        kubectl rollout status deployment/product-service --timeout=300s
