@@ -172,7 +172,7 @@ jobs:
         kubectl apply -f /tmp/app-final.yaml
         kubectl apply -f k8s/app-service.yaml
         kubectl apply -f k8s/app-hpa.yaml
-        
+
         echo "Deployment completed. Checking status..."
-        kubectl get deployment product-service -o wide
-        kubectl rollout status deployment/product-service --timeout=300s
+        kubectl get deployment product-app-deployment -o wide
+        kubectl rollout status deployment/product-app-deployment --timeout=300s

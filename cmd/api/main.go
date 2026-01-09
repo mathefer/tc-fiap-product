@@ -7,7 +7,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	//_ "github.com/mathefer/tc-fiap-product/docs"
+	_ "github.com/mathefer/tc-fiap-product/docs"
 
 	"github.com/mathefer/tc-fiap-product/internal/app"
 )
