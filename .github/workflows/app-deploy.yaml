@@ -89,6 +89,10 @@ jobs:
         args: >
           -Dsonar.verbose=true
           -Dsonar.qualitygate.wait=true
+    - name: Generate Swagger docs
+      run: |
+        go install github.com/swaggo/swag/cmd/swag@latest
+        swag init -g cmd/api/main.go -o docs
     - run: go build ./...
 
   docker:
